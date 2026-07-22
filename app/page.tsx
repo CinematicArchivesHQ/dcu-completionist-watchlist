@@ -19,9 +19,9 @@ const SPOILER_KEY = "hall-of-justice-archives-hide-spoilers";
 const HIDE_WATCHED_KEY = "hall-of-justice-archives-hide-watched";
 const PROFILES_KEY = "hall-of-justice-archives-profiles-v1";
 const ACTIVE_PROFILE_KEY = "hall-of-justice-archives-active-profile-v1";
-const APP_VERSION = "2.0.0";
-const METADATA_VERSION = "2026.07.21.2";
-const CATALOG_VERSION = "HOJ-CURATED-2026.07.21-2";
+const APP_VERSION = "3.0.0";
+const METADATA_VERSION = "2026.07.22.1";
+const CATALOG_VERSION = "HOJ-MUSEUM-2026.07.22-1";
 const ACHIEVEMENTS_SEEN_KEY = "hall-of-justice-archives-achievements-seen-v1";
 type CloudStatus = "local" | "connecting" | "syncing" | "synced" | "offline" | "error";
 type ArchiveBackup = {
@@ -255,30 +255,71 @@ function useMediaDetails(entry?: WatchEntry) {
   return { details, loading };
 }
 
-function PosterArt({ title, hero = false }: { title: string; hero?: boolean }) {
-  const [src, setSrc] = useState<string | null | undefined>(() => posterCache.get(title));
+const artworkPageOverrides: Record<string, string> = {
+  "Superman::DCU — Gods and Monsters": "Superman (2025 film)",
+  "Supergirl::DCU — Gods and Monsters": "Supergirl (2026 film)",
+  "Peacemaker::DCU — Gods and Monsters": "Peacemaker (TV series)",
+  "Creature Commandos::DCU — Gods and Monsters": "Creature Commandos (TV series)",
+  "The Flash::DCEU": "The Flash (film)",
+  "Blue Beetle::DCEU": "Blue Beetle (film)",
+  "Justice League::DCEU": "Justice League (film)",
+  "Suicide Squad::DCEU": "Suicide Squad (film)",
+  "The Suicide Squad::DCEU": "The Suicide Squad (film)",
+  "Wonder Woman::DCEU": "Wonder Woman (2017 film)",
+  "Wonder Woman 1984::DCEU": "Wonder Woman 1984",
+  "Aquaman::DCEU": "Aquaman (film)",
+  "Shazam!::DCEU": "Shazam! (film)",
+  "Constantine::Arrowverse": "Constantine (TV series)",
+  "Supergirl::Arrowverse": "Supergirl (TV series)",
+};
+
+async function resolveArtworkPage(title: string, phase?: string) {
+  const artKey = `${title}::${phase || ""}`;
+  if (artworkPageOverrides[artKey]) return artworkPageOverrides[artKey];
+  const first = entries.find((entry) => entry.collection === title);
+  const year = first?.releaseDate?.slice(0, 4) || "";
+  const isSeries = entries.some((entry) => entry.collection === title && entry.kind === "episode");
+  const typeHint = isSeries ? "television series" : first?.kind === "short" ? "short film" : "film";
+  const query = `${title} ${year} ${typeHint}`.trim();
+  try {
+    const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=6&format=json&origin=*`);
+    const data = await response.json();
+    const pages: string[] = (data.query?.search || []).map((item: { title: string }) => item.title);
+    const ranked = pages.find((page) => page.toLowerCase().includes(title.toLowerCase()) && /film|series|television|short/i.test(page))
+      || pages.find((page) => page.toLowerCase().includes(title.toLowerCase()))
+      || pages[0];
+    return ranked || title;
+  } catch { return title; }
+}
+
+function PosterArt({ title, phase, hero = false }: { title: string; phase?: string; hero?: boolean }) {
+  const cacheKey = `${title}::${phase || ""}`;
+  const [src, setSrc] = useState<string | null | undefined>(() => posterCache.get(cacheKey));
   useEffect(() => {
     let active = true;
-    if (posterCache.has(title)) return () => { active = false; };
-    const likelySeries = entries.some((entry) => entry.collection === title && entry.kind === "episode");
-    const candidates = [title, `${title} (${likelySeries ? "TV series" : "film"})`, `${title} (DC)`];
+    if (posterCache.has(cacheKey)) return () => { active = false; };
     (async () => {
+      const page = await resolveArtworkPage(title, phase);
+      const candidates = [page, title];
       for (const candidate of candidates) {
         try {
           const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(candidate)}`);
           if (!response.ok) continue;
           const data = await response.json();
           const image = data.originalimage?.source || data.thumbnail?.source;
-          if (image) { posterCache.set(title, image); if (active) setSrc(image); return; }
+          const description = String(data.description || "");
+          if (image && !/comic book|comic series|character/i.test(description)) {
+            posterCache.set(cacheKey, image); if (active) setSrc(image); return;
+          }
         } catch { /* use the designed fallback */ }
       }
-      posterCache.set(title, null); if (active) setSrc(null);
+      posterCache.set(cacheKey, null); if (active) setSrc(null);
     })();
     return () => { active = false; };
-  }, [title]);
+  }, [title, phase, cacheKey]);
   if (hero) return src ? <img className="hero-art" src={src} alt="" /> : null;
   return <span className={`mini-poster ${src ? "has-art" : ""}`} style={src ? undefined : posterStyle(title)}>
-    {src ? <img src={src} alt={`${title} poster artwork`} loading="lazy" /> : <b>{title.split(/\s+/).slice(0, 2).map((w) => w[0]).join("")}</b>}
+    {src ? <img src={src} alt={`${title} official screen artwork`} loading="lazy" /> : <b>{title.split(/\s+/).slice(0, 2).map((w) => w[0]).join("")}</b>}
   </span>;
 }
 
@@ -313,7 +354,7 @@ function DetailDrawer({ entry, completed, hideSpoilers, rating, favorite, note, 
   return <div className="drawer-backdrop" onMouseDown={onClose} role="presentation">
     <aside className="detail-drawer" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${entry.title} details`}>
       <button className="drawer-close" onClick={onClose} aria-label="Close details">×</button>
-      <div className="drawer-art" style={posterStyle(entry.collection)}><PosterArt title={entry.collection} hero /></div>
+      <div className="drawer-art" style={posterStyle(entry.collection)}><PosterArt title={entry.collection} phase={entry.phase} hero /></div>
       <div className="drawer-content">
         <p className="eyebrow">{entry.phase} · {entry.kind}</p>
         <h2>{entry.title}</h2>
@@ -837,10 +878,10 @@ export default function Home() {
 
     {view === "archive" && <>
       <section className="hero" style={posterStyle(nextEntry?.title || "Archive")}>
-        {nextEntry && <PosterArt key={nextEntry.id} title={nextEntry.collection} hero />}
+        {nextEntry && <PosterArt key={nextEntry.id} title={nextEntry.collection} phase={nextEntry.phase} hero />}
         <div className="hero-noise" />
         <div className="hero-content">
-          <p className="eyebrow">Next in {watchOrder === "release" ? "release order" : "chronological order"}</p>
+          <p className="eyebrow">Current mission · {watchOrder === "release" ? "release order" : "chronological order"}</p>
           <h1>{heroConcealed ? "Unwatched archive entry" : nextEntry?.title}</h1>
           {nextDetails?.episodeTitle && <h2 className="episode-title">{heroConcealed ? "Title concealed" : `“${nextDetails.episodeTitle}”`}</h2>}
           <p className="hero-meta">{nextEntry?.detail} <i /> {nextDetails?.releaseDate ? displayDate(nextDetails.releaseDate) : nextEntry?.kind} <i /> {nextEntry?.runtime} min</p>
@@ -864,10 +905,6 @@ export default function Home() {
         <article className="scope-stat"><div><strong>{scope === "official" ? canonSourceCount : sourceCount}</strong><small>{scope === "official" ? "Curated titles" : "Expanded titles"}</small></div><span>{scopedEntries.length} trackable items</span></article>
       </section>
 
-      <section className="next-up-shell"><div className="section-title"><div><p className="eyebrow">Up next</p><h2>Your queue</h2></div><span>{currentProfile?.name} · {watchOrder === "release" ? "Release order" : "Chronological order"}</span></div><div className="next-queue">{nextQueue.map((item, index) => <article key={item.id}><button className="queue-open" onClick={() => setSelectedEntry(item)}><span>{String(index + 1).padStart(2, "0")}</span><PosterArt title={item.collection} /><div><small>{item.detail}</small><strong>{item.title}</strong></div></button><button className="queue-check" onClick={() => toggleEntry(item.id, item.title)} aria-label={`Complete ${item.title}`}><Icon name="check" /></button></article>)}</div></section>
-
-      <section className="upcoming-shell"><div className="section-title"><div><p className="eyebrow">On the horizon</p><h2>Upcoming releases</h2></div><span>Future titles stay separate until release</span></div><div className="upcoming-grid">{upcomingProjects.map((project) => { const days = today ? Math.ceil((new Date(`${project.date}T12:00:00`).valueOf() - today.valueOf()) / 86400000) : 0; return <article key={project.title}><button className="upcoming-main" onClick={() => setSelectedUpcoming(project)}><PosterArt title={project.title} /><span><small>{project.type} · {displayDate(project.date)}</small><strong>{project.title}</strong><em>{days > 0 ? `${days} days` : "Released — awaiting archive update"}</em><b>View details →</b></span></button><a href={project.trailer} target="_blank" rel="noreferrer" aria-label={`Watch the ${project.title} trailer`}><Icon name="play" />Trailer</a></article>; })}</div></section>
-
       <section className="catalog-wing-shell" aria-label="Choose a DC catalog">
         <div className="section-title"><div><p className="eyebrow">Hall wings</p><h2>Choose your archive</h2></div><span>Each universe keeps its own completion total</span></div>
         <div className="catalog-wing-tabs">{catalogNames.map((name) => {
@@ -876,6 +913,12 @@ export default function Home() {
           return <button key={name} className={phaseFilter === name ? "active" : ""} onClick={() => { setPhaseFilter(name); setQuery(""); setFilter("all"); }}><strong>{name}</strong><span>{wingDone} / {wingEntries.length} complete</span></button>;
         })}</div>
       </section>
+
+      <section className="next-up-shell"><div className="section-title"><div><p className="eyebrow">Up next</p><h2>Your queue</h2></div><span>{currentProfile?.name} · {watchOrder === "release" ? "Release order" : "Chronological order"}</span></div><div className="next-queue">{nextQueue.map((item, index) => <article key={item.id}><button className="queue-open" onClick={() => setSelectedEntry(item)}><span>{String(index + 1).padStart(2, "0")}</span><PosterArt title={item.collection} phase={item.phase} /><div><small>{item.detail}</small><strong>{item.title}</strong></div></button><button className="queue-check" onClick={() => toggleEntry(item.id, item.title)} aria-label={`Complete ${item.title}`}><Icon name="check" /></button></article>)}</div></section>
+
+      <section className="upcoming-shell"><div className="section-title"><div><p className="eyebrow">On the horizon</p><h2>Upcoming releases</h2></div><span>Future titles stay separate until release</span></div><div className="upcoming-grid">{upcomingProjects.map((project) => { const days = today ? Math.ceil((new Date(`${project.date}T12:00:00`).valueOf() - today.valueOf()) / 86400000) : 0; return <article key={project.title}><button className="upcoming-main" onClick={() => setSelectedUpcoming(project)}><PosterArt title={project.title} /><span><small>{project.type} · {displayDate(project.date)}</small><strong>{project.title}</strong><em>{days > 0 ? `${days} days` : "Released — awaiting archive update"}</em><b>View details →</b></span></button><a href={project.trailer} target="_blank" rel="noreferrer" aria-label={`Watch the ${project.title} trailer`}><Icon name="play" />Trailer</a></article>; })}</div></section>
+
+
 
       <section className="archive-shell" id="watchlist">
         <div className="control-bar">
@@ -902,11 +945,11 @@ export default function Home() {
             const isSeries = items.some((i) => i.season); const open = openCollections.has(segmentKey) || query.length > 0;
             const done = items.filter((item) => completed.has(item.id)).length; const allDone = done === items.length;
             const seasons = [...new Set(items.flatMap((item) => item.season || []))].sort((a, b) => a - b);
-            const scopeLabel = items[0].continuity === "core" ? "Canon" : items[0].phase;
+            const scopeLabel = items[0].continuity === "core" ? "Official archive" : "Adjacent archive";
             return <article className={`watch-card ${allDone ? "complete" : ""}`} key={segmentKey}>
               <button className="card-main" onClick={() => { if (isSeries) setOpenCollections((current) => { const next = new Set(current); if (next.has(segmentKey)) next.delete(segmentKey); else next.add(segmentKey); return next; }); else setSelectedEntry(items[0]); }}>
                 <span className="sequence">{String(titleIndex + 1).padStart(3, "0")}</span>
-                <PosterArt title={collection} />
+                <PosterArt title={collection} phase={items[0].phase} />
                 <span className="card-copy"><small>{scopeLabel} · {items[0].phase} · {isSeries ? `${seasons.length} season${seasons.length === 1 ? "" : "s"}` : items[0].kind}</small><strong>{collection}</strong><span className="mini-progress"><i style={{ width: `${done / items.length * 100}%` }} /></span><em>{done} of {items.length} complete</em></span>
                 {isSeries && <span className={`expand ${open ? "open" : ""}`}><Icon name="chevron" /></span>}
               </button>
@@ -990,6 +1033,6 @@ export default function Home() {
     <UpcomingDrawer key={selectedUpcoming?.title || "upcoming-closed"} project={selectedUpcoming} onClose={() => setSelectedUpcoming(undefined)} />
     {achievementToast && <div className="achievement-splash" role="status"><button onClick={() => setAchievementToast(undefined)} aria-label="Dismiss achievement">×</button><div className="achievement-badge"><span>{achievementToast.icon}</span></div><p>Achievement unlocked</p><h2>{achievementToast.name}</h2><div>{achievementToast.description}</div></div>}
     {toast && <div className="undo-toast" role="status"><span>{toast.message}</span><button onClick={undoToast}>Undo</button></div>}
-    <footer><strong>HALL OF JUSTICE ARCHIVES</strong><span>Unofficial fan-made tracker. Poster imagery is retrieved from Wikipedia/Wikimedia. Trailer buttons open YouTube; no movies or episodes are hosted or streamed here.</span><button onClick={exportProgress}>Export your progress</button></footer>
+    <footer><strong>HALL OF JUSTICE ARCHIVES</strong><span>Unofficial fan-made tracker. Screen artwork is resolved from film and television pages on Wikipedia/Wikimedia. Trailer buttons open YouTube; no movies or episodes are hosted or streamed here.</span><button onClick={exportProgress}>Export your progress</button></footer>
   </main>;
 }
