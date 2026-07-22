@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { canonSourceCount, entries, sourceCount, totalRuntime, type WatchEntry } from "./data";
+import { canonSourceCount, catalogNames, entries, sourceCount, totalRuntime, type WatchEntry } from "./data";
 import { episodeMetadata } from "./episode-metadata";
 import { episodeMetadataOverrides, metadataKey, metadataOverrides, normalizeGenres } from "./metadata-overrides";
 import { achievementData, divisionFor, franchiseFor, infinityStones, orderEntries, permanentSearchText, presetMatches, themes, upcomingProjects, yearFor, type EditEvent, type Profile, type ThemeId, type UpcomingProject, type WatchOrder } from "./catalog";
@@ -19,9 +19,9 @@ const SPOILER_KEY = "hall-of-justice-archives-hide-spoilers";
 const HIDE_WATCHED_KEY = "hall-of-justice-archives-hide-watched";
 const PROFILES_KEY = "hall-of-justice-archives-profiles-v1";
 const ACTIVE_PROFILE_KEY = "hall-of-justice-archives-active-profile-v1";
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "2.0.0";
 const METADATA_VERSION = "2026.07.21.2";
-const CATALOG_VERSION = "HOJ-2026.07.21-1";
+const CATALOG_VERSION = "HOJ-CURATED-2026.07.21-2";
 const ACHIEVEMENTS_SEEN_KEY = "hall-of-justice-archives-achievements-seen-v1";
 type CloudStatus = "local" | "connecting" | "syncing" | "synced" | "offline" | "error";
 type ArchiveBackup = {
@@ -368,7 +368,7 @@ export default function Home() {
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const [phaseFilter, setPhaseFilter] = useState("");
+  const [phaseFilter, setPhaseFilter] = useState<string>("DCEU");
   const [franchiseFilter, setFranchiseFilter] = useState("");
   const [divisionFilter, setDivisionFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
@@ -467,7 +467,7 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloudUser]);
 
-  const scopedEntries = useMemo(() => orderEntries(scope === "official" ? entries.filter((e) => e.continuity === "core") : entries, watchOrder), [scope, watchOrder]);
+  const scopedEntries = useMemo(() => orderEntries((scope === "official" ? entries.filter((e) => e.continuity === "core") : entries).filter((e) => e.phase === phaseFilter), watchOrder), [scope, watchOrder, phaseFilter]);
   const scopedComplete = scopedEntries.filter((e) => completed.has(e.id)).length;
   const percentage = scopedEntries.length ? (scopedComplete / scopedEntries.length) * 100 : 0;
   const nextEntry = scopedEntries.find((e) => !completed.has(e.id)) || scopedEntries[0];
@@ -481,7 +481,6 @@ export default function Home() {
     if (filter === "remaining" && completed.has(entry.id)) return false;
     if (filter === "favorites" && !favorites.has(entry.id)) return false;
     if (!["all", "remaining"].includes(filter) && entry.kind !== filter) return false;
-    if (phaseFilter && entry.phase !== phaseFilter) return false;
     if (franchiseFilter && franchiseFor(entry) !== franchiseFilter) return false;
     if (divisionFilter && divisionFor(entry) !== divisionFilter) return false;
     if (yearFilter && String(yearFor(entry)) !== yearFilter) return false;
@@ -489,7 +488,7 @@ export default function Home() {
     const episode = episodeMetadata[metadataKey(entry.collection, entry.season, entry.episode)] || {};
     const haystack = [entry.title, entry.collection, entry.detail, entry.phase, entry.kind, entry.format, franchiseFor(entry), divisionFor(entry), notes[entry.id], episode.episodeTitle, episode.description, ...(episode.cast || []), permanentSearchText(entry)].join(" ");
     return haystack.toLowerCase().includes(query.trim().toLowerCase());
-  }), [scopedEntries, filter, query, completed, favorites, hideWatched, notes, phaseFilter, franchiseFilter, divisionFilter, yearFilter, preset]);
+  }), [scopedEntries, filter, query, completed, favorites, hideWatched, notes, franchiseFilter, divisionFilter, yearFilter, preset]);
 
   const collections = useMemo(() => {
     const groups = new Map<string, WatchEntry[]>();
@@ -753,7 +752,7 @@ export default function Home() {
     const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 630; const ctx = canvas.getContext("2d"); if (!ctx) return;
     const gradient = ctx.createLinearGradient(0, 0, 1200, 630); gradient.addColorStop(0, "#060a10"); gradient.addColorStop(1, "#182331"); ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1200, 630);
     ctx.strokeStyle = "#c6a45e"; ctx.lineWidth = 3; ctx.strokeRect(32, 32, 1136, 566);
-    try { const logo = new Image(); logo.src = "./hall-of-justice-archives-logo.png?v=3"; await new Promise<void>((resolve, reject) => { logo.onload = () => resolve(); logo.onerror = () => reject(); }); ctx.drawImage(logo, 76, 62, 430, 114); } catch { ctx.fillStyle = "#d8b95d"; ctx.font = "600 34px sans-serif"; ctx.fillText("HALL OF JUSTICE ARCHIVES", 80, 105); }
+    try { const logo = new Image(); logo.src = "./hall-of-justice-logo.svg"; await new Promise<void>((resolve, reject) => { logo.onload = () => resolve(); logo.onerror = () => reject(); }); ctx.drawImage(logo, 76, 62, 430, 114); } catch { ctx.fillStyle = "#d8b95d"; ctx.font = "600 34px sans-serif"; ctx.fillText("HALL OF JUSTICE ARCHIVES", 80, 105); }
     ctx.fillStyle = "#f3efe7"; ctx.font = "700 96px sans-serif"; ctx.fillText(`${Math.round(percentage)}% COMPLETE`, 80, 265); ctx.font = "500 35px sans-serif"; ctx.fillStyle = "#aeb7c4"; ctx.fillText(`${scopedComplete} of ${scopedEntries.length} entries · ${formatTime(watchedRuntime)} watched`, 84, 330);
     infinityStones.forEach((stone, index) => { const earned = phaseStats.find((phase) => phase.phase === stone.phase)?.percent === 100; const x = 110 + index * 118; const y = 418; ctx.beginPath(); for (let point = 0; point < 6; point++) { const angle = Math.PI / 3 * point - Math.PI / 2; const px = x + Math.cos(angle) * 35; const py = y + Math.sin(angle) * 35; if (point) ctx.lineTo(px, py); else ctx.moveTo(px, py); } ctx.closePath(); ctx.fillStyle = earned ? stone.color : "#202a35"; ctx.globalAlpha = earned ? 1 : .55; ctx.fill(); ctx.strokeStyle = earned ? "#f4e3b2" : "#52606f"; ctx.stroke(); ctx.globalAlpha = 1; ctx.fillStyle = earned ? "#d9dde3" : "#687483"; ctx.font = "500 14px sans-serif"; ctx.textAlign = "center"; ctx.fillText(`P${index + 1}`, x, 475); }); ctx.textAlign = "left";
     ctx.fillStyle = "#d8b95d"; ctx.font = "600 24px sans-serif"; ctx.fillText(profiles.find((profile) => profile.id === activeProfileId)?.name.toUpperCase() || "MY WATCH-THROUGH", 84, 535); ctx.fillStyle = "#7e8997"; ctx.font = "20px sans-serif"; ctx.fillText(`${watchOrder === "release" ? "Release order" : "Chronological order"} · ${infinityStones.filter((stone) => phaseStats.find((phase) => phase.phase === stone.phase)?.percent === 100).length}/6 era records secured`, 84, 568);
@@ -819,7 +818,7 @@ export default function Home() {
   return <main data-theme={theme}>
     <header className="topbar">
       <button className="mobile-menu" onClick={() => setMobileNav(!mobileNav)} aria-label="Open navigation"><Icon name="menu" /></button>
-      <button className="brand" onClick={() => setView("archive")} aria-label="Hall of Justice Archives home"><img src="./hall-of-justice-archives-logo.png?v=3" alt="Hall of Justice Archives" /></button>
+      <button className="brand" onClick={() => setView("archive")} aria-label="Hall of Justice Archives home"><img src="./hall-of-justice-logo.svg" alt="Hall of Justice Archives" /></button>
       <nav className={mobileNav ? "open" : ""}>
         <button className={view === "archive" ? "active" : ""} onClick={() => { setView("archive"); setMobileNav(false); }}>Archive</button>
         <button className={view === "history" ? "active" : ""} onClick={() => { setView("history"); setMobileNav(false); }}>History</button>
@@ -869,10 +868,19 @@ export default function Home() {
 
       <section className="upcoming-shell"><div className="section-title"><div><p className="eyebrow">On the horizon</p><h2>Upcoming releases</h2></div><span>Future titles stay separate until release</span></div><div className="upcoming-grid">{upcomingProjects.map((project) => { const days = today ? Math.ceil((new Date(`${project.date}T12:00:00`).valueOf() - today.valueOf()) / 86400000) : 0; return <article key={project.title}><button className="upcoming-main" onClick={() => setSelectedUpcoming(project)}><PosterArt title={project.title} /><span><small>{project.type} · {displayDate(project.date)}</small><strong>{project.title}</strong><em>{days > 0 ? `${days} days` : "Released — awaiting archive update"}</em><b>View details →</b></span></button><a href={project.trailer} target="_blank" rel="noreferrer" aria-label={`Watch the ${project.title} trailer`}><Icon name="play" />Trailer</a></article>; })}</div></section>
 
+      <section className="catalog-wing-shell" aria-label="Choose a DC catalog">
+        <div className="section-title"><div><p className="eyebrow">Hall wings</p><h2>Choose your archive</h2></div><span>Each universe keeps its own completion total</span></div>
+        <div className="catalog-wing-tabs">{catalogNames.map((name) => {
+          const wingEntries = entries.filter((entry) => entry.phase === name && (scope === "completionist" || entry.continuity === "core"));
+          const wingDone = wingEntries.filter((entry) => completed.has(entry.id)).length;
+          return <button key={name} className={phaseFilter === name ? "active" : ""} onClick={() => { setPhaseFilter(name); setQuery(""); setFilter("all"); }}><strong>{name}</strong><span>{wingDone} / {wingEntries.length} complete</span></button>;
+        })}</div>
+      </section>
+
       <section className="archive-shell" id="watchlist">
         <div className="control-bar">
           <div className="order-toggle" aria-label="Watch order"><button className={watchOrder === "release" ? "active" : ""} onClick={() => setWatchOrder("release")}>Release Order</button><button className={watchOrder === "chronological" ? "active" : ""} onClick={() => setWatchOrder("chronological")}>Chronological Order</button></div>
-          <div className="scope-toggle"><button className={scope === "official" ? "active" : ""} onClick={() => setScope("official")} title="Curated DC films and series">Curated Archive</button><button className={scope === "completionist" ? "active" : ""} onClick={() => setScope("completionist")} title="All included live-action, animation, serials, LEGO, shorts, and specials">Expanded Archive</button></div>
+          <div className="scope-toggle"><button className={scope === "official" ? "active" : ""} onClick={() => setScope("official")} title="Core titles in the selected catalog">Core Catalog</button><button className={scope === "completionist" ? "active" : ""} onClick={() => setScope("completionist")} title="Includes adjacent titles such as Superman & Lois">Expanded Catalog</button></div>
           <div className="filter-tabs">
             {(["all", "favorites", "remaining", "movie", "episode", "special", "short"] as Filter[]).map((item) => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item === "all" ? "All" : item}</button>)}
           </div>
@@ -885,7 +893,7 @@ export default function Home() {
             <button type="button" onClick={() => setScopedCompletion(false)}>Deselect all</button>
             <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}>{showAdvanced ? "Hide filters" : "Advanced filters"}</button>
           </div>
-          {showAdvanced && <div className="advanced-filters"><select value={phaseFilter} onChange={(e) => setPhaseFilter(e.target.value)}><option value="">All universes</option>{[...new Set(entries.map((entry) => entry.phase))].map((value) => <option key={value}>{value}</option>)}</select><select value={franchiseFilter} onChange={(e) => setFranchiseFilter(e.target.value)}><option value="">All story groups</option>{franchises.map((value) => <option key={value}>{value}</option>)}</select><select value={divisionFilter} onChange={(e) => setDivisionFilter(e.target.value)}><option value="">All formats</option>{divisions.map((value) => <option key={value}>{value}</option>)}</select><select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}><option value="">All release years</option>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select><select value={preset} onChange={(e) => setPreset(e.target.value)}><option value="">No preset</option><option value="worlds-finest">World’s Finest</option><option value="dcu">DC Universe</option><option value="arrowverse">Arrowverse</option><option value="animation">Animation</option></select><button onClick={() => { setPhaseFilter(""); setFranchiseFilter(""); setDivisionFilter(""); setYearFilter(""); setPreset(""); }}>Clear</button></div>}
+          {showAdvanced && <div className="advanced-filters"><select value={franchiseFilter} onChange={(e) => setFranchiseFilter(e.target.value)}><option value="">All story groups</option>{franchises.map((value) => <option key={value}>{value}</option>)}</select><select value={divisionFilter} onChange={(e) => setDivisionFilter(e.target.value)}><option value="">All formats</option>{divisions.map((value) => <option key={value}>{value}</option>)}</select><select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}><option value="">All release years</option>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select><select value={preset} onChange={(e) => setPreset(e.target.value)}><option value="">No preset</option><option value="worlds-finest">World’s Finest</option><option value="dcu">DC Universe</option><option value="arrowverse">Arrowverse</option><option value="animation">Animation</option></select><button onClick={() => { setFranchiseFilter(""); setDivisionFilter(""); setYearFilter(""); setPreset(""); }}>Clear</button></div>}
         </div>
         <div className="results-heading"><div><p className="eyebrow">{watchOrder === "release" ? "Release-order archive" : "In-universe chronology"}</p><h2>{collections.length} titles shown</h2></div><span>{filtered.length} trackable items</span></div>
         <div className="watchlist">
@@ -942,8 +950,8 @@ export default function Home() {
         <article className="metric"><small>Current streak</small><strong>{streak} day{streak === 1 ? "" : "s"}</strong><span>Complete at least one item daily</span></article>
         <article className="metric"><small>Movies completed</small><strong>{completedMovies}</strong><span>{completedEpisodes} individual episodes completed</span></article>
         <article className="metric"><small>Estimated finish</small><strong className="date-metric">{estimatedFinish ? estimatedFinish.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Calculating…"}</strong><span>At an average of two hours per day</span></article>
-        <article className="phase-panel"><div className="panel-heading"><h2>Era progress</h2><span>Completion across the DC multiverse</span></div>{phaseStats.map((stat) => <div className="phase-row" key={stat.phase}><b>{stat.phase}</b><div><i style={{ width: `${stat.percent}%` }} /></div><span>{stat.done}/{stat.total}</span></div>)}</article>
-        <article className="breakdown"><div className="panel-heading"><h2>Archive composition</h2><span>What the 625-item journey contains</span></div>{(["movie", "episode", "special", "short"] as const).map((kind) => { const count = scopedEntries.filter(e => e.kind === kind).length; return <div key={kind}><span>{kind}</span><strong>{count}</strong><i style={{ width: `${count / scopedEntries.length * 100}%` }} /></div>; })}</article>
+        <article className="phase-panel"><div className="panel-heading"><h2>Era progress</h2><span>Completion inside the selected archive</span></div>{phaseStats.map((stat) => <div className="phase-row" key={stat.phase}><b>{stat.phase}</b><div><i style={{ width: `${stat.percent}%` }} /></div><span>{stat.done}/{stat.total}</span></div>)}</article>
+        <article className="breakdown"><div className="panel-heading"><h2>Archive composition</h2><span>What this selected catalog contains</span></div>{(["movie", "episode", "special", "short"] as const).map((kind) => { const count = scopedEntries.filter(e => e.kind === kind).length; return <div key={kind}><span>{kind}</span><strong>{count}</strong><i style={{ width: `${count / scopedEntries.length * 100}%` }} /></div>; })}</article>
         <article className="recent-panel"><div className="panel-heading"><h2>Recently completed</h2><span>Your latest archive activity</span></div>{recentEntries.length ? recentEntries.map((item) => <button key={item.id} onClick={() => setSelectedEntry(item.entry)}><span>{item.entry?.title}</span><small>{item.entry?.detail} · {displayWatchedDate(item.at)}</small></button>) : <p>Complete an item to begin your viewing history.</p>}</article>
         <article className="metric"><small>Average rating</small><strong>{averageRating ? averageRating.toFixed(1) : "—"}</strong><span>{rated.length} rated · {favorites.size} favorites</span></article>
         <article className="stone-panel"><div className="panel-heading"><h2>Archive Medallions & Universe Recaps</h2><span>{infinityStones.filter((stone) => phaseStats.find((phase) => phase.phase === stone.phase)?.percent === 100).length} of 6 era records secured</span></div><div className="stone-grid">{infinityStones.map((stone) => { const earned = phaseStats.find((phase) => phase.phase === stone.phase)?.percent === 100; return <div className={earned ? "stone earned" : "stone"} key={stone.name}><i style={{ "--stone": stone.color } as React.CSSProperties} /><strong>{stone.name}</strong><span>{stone.phase} · {earned ? "Secured" : "Locked"}</span>{earned && <button onClick={() => downloadEraRecap(stone.phase)}>Download recap</button>}</div>; })}</div></article>
@@ -952,7 +960,7 @@ export default function Home() {
     </section>}
 
     {view === "timeline" && <section className="inner-page timeline-page">
-      <div className="page-heading"><p className="eyebrow">A multiverse through time</p><h1>Every era. One continuous archive.</h1><p>Follow the actual release sequence or travel through events in in-universe chronological order.</p></div>
+      <div className="page-heading"><p className="eyebrow">A multiverse through time</p><h1>Every wing. Its own archive.</h1><p>Move between curated DC universes without combining them into one enormous completion list.</p></div>
       <div className="timeline-track">{phaseStats.map((stat, index) => <article key={stat.phase}><div className="timeline-node"><span>{index + 1}</span></div><div><small>Era {String(index + 1).padStart(2, "0")}</small><h2>{stat.phase}</h2><p>{stat.total} items · {Math.round(stat.percent)}% complete</p><div className="phase-line"><i style={{ width: `${stat.percent}%` }} /></div></div></article>)}</div>
     </section>}
     {view === "settings" && <section className="inner-page settings-page">

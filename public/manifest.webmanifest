@@ -2,7 +2,7 @@
   "name": "Hall of Justice Archives",
   "short_name": "Justice Archives",
   "id": ".",
-  "description": "A premium completionist archive for DC movies, television, animation, specials, and shorts.",
+  "description": "A curated DC completion archive with separate DCEU, DCU, Arrowverse, animated, LEGO, and trilogy catalogs.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
@@ -10,6 +10,11 @@
   "background_color": "#07111f",
   "theme_color": "#07111f",
   "icons": [
-    { "src": "hall-of-justice-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "hall-of-justice-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }
