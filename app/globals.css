@@ -181,3 +181,203 @@ footer{background:var(--museum-navy);border-top:1px solid var(--museum-gold);col
 .watch-card .mini-poster{height:auto;aspect-ratio:2/3}
 .watch-card .expand{top:auto;bottom:174px}
 @media(max-width:720px){.watch-card .card-main{grid-template-rows:auto auto}.watch-card .mini-poster{height:auto;aspect-ratio:2/3}}
+
+/* Hall of Justice precision UI pass — v4.0 */
+:root{
+  --hoj-card-h:620px;
+  --hoj-title-lines:3;
+}
+
+/* Hero: readable, cinematic, and intentionally balanced */
+.hero{
+  min-height:580px!important;
+  grid-template-columns:minmax(420px,48%) 1fr!important;
+}
+.hero-art{
+  inset:0 0 0 46%!important;
+  width:54%!important;
+  filter:saturate(.94) contrast(1.03) brightness(.88)!important;
+}
+.hero-noise{
+  background:linear-gradient(90deg,
+    rgba(8,20,33,.98) 0%,
+    rgba(8,20,33,.94) 36%,
+    rgba(8,20,33,.68) 49%,
+    rgba(8,20,33,.12) 72%,
+    rgba(8,20,33,.28) 100%)!important;
+}
+.hero-content{padding:78px 42px 76px 72px!important;max-width:700px!important}
+.hero h1{
+  font-size:clamp(48px,5.25vw,88px)!important;
+  line-height:.91!important;
+  letter-spacing:-.025em!important;
+  text-wrap:balance;
+}
+.hero-copy{font-size:15px!important;line-height:1.65!important;max-width:560px!important}
+.hero-meta{font-size:14px!important;line-height:1.55!important}
+.hero .genre-row{font-size:10px!important;line-height:1.5!important}
+.hero-actions{margin-top:22px!important}
+.hero-actions button,.hero-actions .trailer-action{height:48px!important;padding:0 20px!important;font-size:14px!important}
+.progress-ring{width:154px!important;height:154px!important}
+.progress-ring strong{font-size:48px!important}
+
+/* Archive wing cards: polished, compact, and consistent */
+.catalog-wing-shell{padding-top:42px!important;padding-bottom:34px!important}
+.catalog-wing-tabs{grid-template-columns:repeat(4,minmax(190px,1fr))!important;gap:16px!important}
+.catalog-wing-tabs button{min-height:112px!important;padding:20px!important;border-radius:2px!important}
+.catalog-wing-tabs button strong{font-size:20px!important;line-height:1.15!important;display:block;max-width:100%}
+.catalog-wing-tabs button span{font-size:10px!important;margin-top:16px!important}
+
+/* Controls: clear groups and no invisible text */
+.control-bar{
+  position:relative!important;
+  top:auto!important;
+  z-index:10!important;
+  display:grid!important;
+  grid-template-columns:auto auto minmax(260px,1fr)!important;
+  grid-template-areas:
+    "order scope filters"
+    "search search actions"!important;
+  gap:14px 18px!important;
+  padding:18px!important;
+  overflow:visible!important;
+}
+.order-toggle{grid-area:order!important}
+.scope-toggle{grid-area:scope!important}
+.filter-tabs{grid-area:filters!important;justify-content:flex-end!important;flex-wrap:wrap!important}
+.search{grid-area:search!important;max-width:560px!important;height:44px!important}
+.archive-actions{grid-area:actions!important;display:flex!important;justify-content:flex-end!important;align-items:center!important;gap:10px!important;flex-wrap:wrap!important}
+.control-bar button,.control-bar select,.control-bar input,.control-bar label{opacity:1!important;visibility:visible!important}
+.order-toggle button,.scope-toggle button,.filter-tabs button{min-height:36px!important;font-size:11px!important;white-space:nowrap!important}
+.option-toggle{color:#374252!important;font-size:10px!important}
+.bulk-date{color:#594a35!important}
+.archive-actions>button{background:var(--museum-navy)!important;color:#fff!important;border:1px solid var(--museum-navy)!important;min-height:36px!important;padding:0 12px!important}
+.archive-actions>button:hover{background:#16283b!important}
+
+/* Catalog grid and equal-height cards */
+.watchlist{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:24px!important;
+  align-items:stretch!important;
+}
+.watch-card{
+  height:var(--hoj-card-h)!important;
+  min-height:var(--hoj-card-h)!important;
+  display:grid!important;
+  grid-template-columns:1fr 58px!important;
+  grid-template-rows:1fr 58px!important;
+  align-self:stretch!important;
+  border-radius:2px!important;
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease!important;
+}
+.watch-card:hover{transform:translateY(-4px)!important;box-shadow:0 22px 46px rgba(56,42,23,.15)!important}
+.watch-card .card-main{
+  grid-column:1/3!important;
+  grid-row:1!important;
+  width:100%!important;
+  min-height:0!important;
+  height:100%!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  grid-template-rows:360px minmax(0,1fr)!important;
+  overflow:hidden!important;
+}
+.watch-card .mini-poster{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:100%!important;
+  height:360px!important;
+  aspect-ratio:auto!important;
+  background:#09131f!important;
+}
+.watch-card .mini-poster img{object-fit:cover!important;object-position:center 18%!important}
+.watch-card .card-copy{
+  grid-column:1!important;
+  grid-row:2!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  min-height:0!important;
+  height:auto!important;
+  padding:20px 20px 16px!important;
+  overflow:hidden!important;
+}
+.watch-card .card-copy small{
+  font-size:9px!important;
+  line-height:1.35!important;
+  min-height:25px!important;
+  display:-webkit-box!important;
+  -webkit-line-clamp:2!important;
+  -webkit-box-orient:vertical!important;
+  overflow:hidden!important;
+}
+.watch-card .card-copy strong{
+  font-size:clamp(19px,1.45vw,24px)!important;
+  line-height:1.08!important;
+  letter-spacing:-.018em!important;
+  margin:10px 0 12px!important;
+  display:-webkit-box!important;
+  -webkit-line-clamp:var(--hoj-title-lines)!important;
+  -webkit-box-orient:vertical!important;
+  overflow:hidden!important;
+  min-height:3.24em!important;
+  max-height:3.24em!important;
+  text-wrap:balance;
+}
+.watch-card .card-copy em{font-size:9px!important;line-height:1.35!important;margin-top:auto!important}
+.watch-card .mini-progress{width:100%!important;max-width:none!important;margin-top:10px!important}
+.watch-card .sequence{top:14px!important;left:14px!important;margin:0!important}
+.watch-card .expand{top:324px!important;bottom:auto!important;right:14px!important;width:30px!important;height:30px!important;display:grid!important;place-items:center!important}
+.card-trailer,.complete-button{
+  position:static!important;
+  width:auto!important;
+  height:58px!important;
+  border-radius:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+}
+.card-trailer{grid-column:1!important;grid-row:2!important;gap:8px!important;font-size:10px!important}
+.complete-button{grid-column:2!important;grid-row:2!important;border:0!important;border-left:1px solid var(--museum-line)!important;color:var(--museum-ink)!important}
+.complete-button svg{width:18px!important}
+.season-list{grid-column:1/3!important;grid-row:3!important;height:auto!important}
+
+/* Stronger typography rhythm */
+.section-title h2,.results-heading h2{font-size:clamp(30px,3vw,46px)!important;line-height:1!important;letter-spacing:-.02em!important}
+.results-heading{padding-top:34px!important}
+.results-heading>span{color:#5f6f7f!important;font-weight:600!important}
+
+/* Responsive precision */
+@media(max-width:1320px){
+  .watchlist{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .catalog-wing-tabs{grid-template-columns:repeat(3,minmax(190px,1fr))!important}
+  .control-bar{grid-template-columns:1fr 1fr!important;grid-template-areas:"order scope" "filters filters" "search actions"!important}
+  .filter-tabs{justify-content:flex-start!important}
+}
+@media(max-width:980px){
+  .watchlist{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .catalog-wing-tabs{grid-template-columns:repeat(2,minmax(180px,1fr))!important}
+  .hero{min-height:610px!important;grid-template-columns:1fr!important}
+  .hero-art{inset:0!important;width:100%!important;opacity:.56!important}
+  .hero-noise{background:linear-gradient(90deg,rgba(8,20,33,.97) 0%,rgba(8,20,33,.85) 52%,rgba(8,20,33,.38) 100%)!important}
+  .hero-content{padding-right:180px!important}
+}
+@media(max-width:720px){
+  :root{--hoj-card-h:590px}
+  .hero{min-height:690px!important}
+  .hero-content{padding:78px 22px 150px!important}
+  .hero h1{font-size:clamp(42px,13vw,58px)!important;line-height:.94!important}
+  .hero-copy{font-size:14px!important}
+  .hero>.progress-ring{left:auto!important;right:22px!important;bottom:24px!important}
+  .catalog-wing-tabs,.watchlist{grid-template-columns:1fr!important}
+  .control-bar{grid-template-columns:1fr!important;grid-template-areas:"order" "scope" "search" "filters" "actions"!important}
+  .order-toggle,.scope-toggle{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .filter-tabs{overflow-x:auto!important;flex-wrap:nowrap!important;padding-bottom:4px!important}
+  .archive-actions{justify-content:flex-start!important}
+  .watch-card .card-main{grid-template-rows:390px minmax(0,1fr)!important}
+  .watch-card .mini-poster{height:390px!important}
+  .watch-card .expand{top:354px!important}
+  .watch-card .card-copy strong{font-size:24px!important}
+}
